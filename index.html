@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        'use strict'
+
+        const fileName = 'index.encrypted.html' // original filename before encryption
+
+        const decryptMessage = async (key, ciphertext, iv) => await window.crypto.subtle.decrypt(
+            {
+                name: 'AES-CBC',
+                iv,
+            },
+            key,
+            ciphertext,
+        )
+
+        const fetchFile = async fileName => {
+            const myRequest = new Request('./' + fileName)
+            const response = await fetch(myRequest)
+
+            return response.arrayBuffer()
+        }
+
+        const importKey = async (passHash16) => await window.crypto.subtle.importKey(
+            'raw',
+            passHash16,
+            'AES-CBC',
+            true,
+            [ 'encrypt', 'decrypt' ],
+        )
+
+        async function getHash(text) {
+            const uint8encoded = new TextEncoder().encode(text)
+            const longHash = await crypto.subtle.digest('SHA-1', uint8encoded)
+
+            return new Uint8Array(longHash, 0, 16)
+        }
+
+        (async fileName => {
+            const passHash16 = await getHash(prompt('Password'))
+            const key = await importKey(passHash16)
+            const buf = await fetchFile(fileName)
+            const iv = await getHash(fileName)
+            const decryptedData = await decryptMessage(key, buf, iv)
+            const decodedText = new TextDecoder().decode(decryptedData)
+            document.open()
+            document.write(decodedText)
+            document.close()
+        })(fileName)
+    </script>
+</head>
+
+</html>
